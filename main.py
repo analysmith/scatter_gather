@@ -1,6 +1,4 @@
-import random
 import numpy as np
-import pandas as pd
 import csv
 from collections import defaultdict
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
@@ -37,6 +35,18 @@ def load_glove_embeddings():
                 glove[word] = vector
     print("glove embeddings loaded")
 
+
+def ngram_cluster(texts):
+    texts = list(sorted(texts))
+    cluster2texts = defaultdict(lambda : [])
+    print("Processing texts")
+    vectorizer = TfidfVectorizer(tokenizer=lambda x: x.split(" "), ngram_range=(1,4), min_df=2, max_df=1.0)
+    text_mat = vectorizer.fit_transform(texts)
+    kmeans = KMeans(n_clusters=int(len(texts) / 10))
+    clusters = kmeans.fit_predict(text_mat)
+    for idx, c in enumerate(clusters):
+        cluster2texts[c].append(texts[idx])
+    return cluster2texts
 
 def glove_cluster(texts):
     texts = list(sorted(texts))
@@ -75,11 +85,12 @@ def scatter_gather(titles):
                     print("\t" + t)
                 print()
             indices = input("Which ones will you gather?")
-            for idx_str in indices.split():
+            for idx_pair in indices.split(";"):
+                idx_str, cluster_name = idx_pair.split("*")
                 idx = int(idx_str)
-                gather_bag.append([t for t in clusters[idx]])
-            gather_set.update(clusters[idx])
-            ungathered_titles = ungathered_titles - set(clusters[idx])
+                gather_bag.append((cluster_name, [t for t in clusters[idx]]))
+                gather_set.update(clusters[idx])
+                ungathered_titles = ungathered_titles - set(clusters[idx])
         else:
             break
     save = input("Save file? (y/n):")
