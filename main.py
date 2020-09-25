@@ -16,10 +16,8 @@ def load_papers():
         reader = csv.DictReader(f)
         for p in reader:
             try:
-                #print(p.keys())
                 titles.add(p["Title"])
                 count += 1
-                #print(len(p))
             except:
                 pass
     print("Number of papers:", count)
@@ -60,7 +58,7 @@ def glove_cluster(texts):
         cluster2texts[c].append(texts[idx])
     return cluster2texts
 
-def scatter(titles):
+def scatter_gather(titles):
     ungathered_titles = set([t for t in titles])
     gather_bag = []
     gather_set = set()
@@ -89,10 +87,10 @@ def scatter(titles):
         fname = input("filename (default=scatter_gather_out.json):")
         if fname.strip() == "":
             fname = "scatter_gather_out.json"
-        with open(fname) as f:
+        with open(fname, "w") as f:
             json.dump(gather_bag, f)
 
 if __name__ == "__main__":
     load_glove_embeddings()
     paper_titles = load_papers()
-    scatter(paper_titles)
+    scatter_gather(paper_titles)
