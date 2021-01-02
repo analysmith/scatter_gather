@@ -1,28 +1,39 @@
 import numpy as np
 import csv
 from collections import defaultdict
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
 import re
 from scipy.sparse import csr_matrix
 import json
+from typing import *
 
-def load_papers():
+glove = defaultdict(lambda : np.random.random(100))
+
+def load_papers(use_abstracts=False) -> Set[str]:
     count = 0
     titles = set()
+    abstracts = set()
     with open("all_papers.csv", encoding='utf-8') as f:
         reader = csv.DictReader(f)
+
         for p in reader:
             try:
                 titles.add(p["Title"])
+                if "Abstract Note" in p and p["Abstract Note"]:
+                    abstracts.add( p["Title"] + " " + p["Abstract Note"])
+                else:
+                    abstracts.add(p["Title"] + " " + "No Abstract")
                 count += 1
             except:
                 pass
     print("Number of papers:", count)
     print("Number of unique titles:", len(titles))
+    if use_abstracts:
+        return abstracts
     return titles
 
-glove = defaultdict(lambda : np.random.random(100))
+
 def load_glove_embeddings():
     global glove
     print("Loading glove embeddings")
@@ -36,7 +47,7 @@ def load_glove_embeddings():
     print("glove embeddings loaded")
 
 
-def ngram_cluster(texts):
+def ngram_cluster(texts: Set[str]) -> Dict[int, List[str]]:
     texts = list(sorted(texts))
     cluster2texts = defaultdict(lambda : [])
     print("Processing texts")
@@ -48,7 +59,8 @@ def ngram_cluster(texts):
         cluster2texts[c].append(texts[idx])
     return cluster2texts
 
-def glove_cluster(texts):
+
+def glove_cluster(texts: Set[str]) -> Dict[int, List[str]]:
     texts = list(sorted(texts))
     cluster_seed = np.random.random(100)
     cluster2texts = defaultdict(lambda : [])
@@ -68,14 +80,13 @@ def glove_cluster(texts):
         cluster2texts[c].append(texts[idx])
     return cluster2texts
 
-def scatter_gather(titles):
+def scatter_gather(titles: Set[str]):
     ungathered_titles = set([t for t in titles])
-    gather_bag = []
+    gather_bag: List[Tuple(str, List[str])] = []
     gather_set = set()
-
     round = 0
     while True:
-        do_scatter = input("Scatter? (y/n):")
+        do_scatter: str = input("Scatter? (y/n):")
         if do_scatter.lower() == "y" or do_scatter.lower() == "yes":
             print("Round %s" % round)
             clusters = glove_cluster(ungathered_titles)
@@ -84,18 +95,18 @@ def scatter_gather(titles):
                 for t in ts[:5]:
                     print("\t" + t)
                 print()
-            indices = input("Which ones will you gather?")
+            indices: str = input("Which ones will you gather?")
             for idx_pair in indices.split(";"):
                 idx_str, cluster_name = idx_pair.split("*")
-                idx = int(idx_str)
+                idx: int = int(idx_str)
                 gather_bag.append((cluster_name, [t for t in clusters[idx]]))
                 gather_set.update(clusters[idx])
                 ungathered_titles = ungathered_titles - set(clusters[idx])
         else:
             break
-    save = input("Save file? (y/n):")
+    save: str = input("Save file? (y/n):")
     if save.lower() == "y" or save.lower() == "yes":
-        fname = input("filename (default=scatter_gather_out.json):")
+        fname: str = input("filename (default=scatter_gather_out.json):")
         if fname.strip() == "":
             fname = "scatter_gather_out.json"
         with open(fname, "w") as f:
@@ -103,5 +114,5 @@ def scatter_gather(titles):
 
 if __name__ == "__main__":
     load_glove_embeddings()
-    paper_titles = load_papers()
+    paper_titles = load_papers(use_abstracts=True)
     scatter_gather(paper_titles)
